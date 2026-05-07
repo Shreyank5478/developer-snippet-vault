@@ -4,8 +4,8 @@ import pytest
 
 @pytest.fixture()
 def client():
-    app_module._reset_store()
     app = app_module.create_app(testing=True)
+    app_module._reset_store(app)
     with app.test_client() as client:
         yield client
 

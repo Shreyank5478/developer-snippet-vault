@@ -8,6 +8,7 @@ A production-style Flask backend API for managing developer snippets and command
 * View snippets
 * Delete snippets
 * Input validation
+* SQLite persistence
 * REST API structure
 * Dockerized deployment
 
@@ -15,6 +16,8 @@ A production-style Flask backend API for managing developer snippets and command
 
 * Python
 * Flask
+* Flask-SQLAlchemy
+* SQLite
 * Docker
 * AWS EC2
 * Linux
@@ -37,6 +40,8 @@ python app.py
 ```
 
 The API will be available at `http://127.0.0.1:5000`.
+
+On first run, the app will create a local SQLite database file named `snippets.db`.
 
 ## API Endpoints
 
@@ -102,6 +107,7 @@ Environment variables:
 - `PORT` (default: 5000)
 - `FLASK_DEBUG` (set to `1` for debug mode)
 - `MAX_CONTENT_LENGTH` (bytes, default: 1048576)
+- `DATABASE_URL` (optional, overrides SQLite path)
 
 ## Deployment
 
