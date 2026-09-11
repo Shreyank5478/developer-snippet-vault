@@ -24,6 +24,22 @@ def main() -> None:
         print_result("Server reachable", False, str(exc))
         return
 
+    session = requests.Session()
+    try:
+        user_response = session.post(
+            f"{BASE_URL}/users", json={"name": "Smoke Test User"}, timeout=5
+        )
+        user_data = user_response.json()
+        api_key = user_data.get("data", {}).get("api_key")
+        if user_response.status_code != 201 or not api_key:
+            print_result("Create API user", False, f"Status {user_response.status_code}")
+            return
+        session.headers.update({"Authorization": f"Bearer {api_key}"})
+        print_result("Create API user", True)
+    except (requests.RequestException, ValueError) as exc:
+        print_result("Create API user", False, str(exc))
+        return
+
     # 1) GET / should return a JSON status message.
     try:
         response = requests.get(f"{BASE_URL}/", timeout=5)
@@ -50,7 +66,7 @@ def main() -> None:
     }
     snippet_id = None
     try:
-        response = requests.post(f"{BASE_URL}/snippets", json=snippet_payload, timeout=5)
+        response = session.post(f"{BASE_URL}/snippets", json=snippet_payload, timeout=5)
         if response.status_code == 201:
             data = response.json()
             snippet = data.get("data", {})
@@ -70,7 +86,7 @@ def main() -> None:
 
     # 3) GET /snippets should return a list containing the new snippet.
     try:
-        response = requests.get(f"{BASE_URL}/snippets", timeout=5)
+        response = session.get(f"{BASE_URL}/snippets", timeout=5)
         if response.status_code == 200:
             data = response.json()
             snippet_list = data.get("data", {}).get("snippets", [])
@@ -86,7 +102,7 @@ def main() -> None:
 
     # 4) POST /snippets with invalid JSON should fail.
     try:
-        response = requests.post(
+        response = session.post(
             f"{BASE_URL}/snippets",
             data="not valid json",
             headers={"Content-Type": "application/json"},
@@ -103,7 +119,7 @@ def main() -> None:
 
     # 5) POST /snippets with missing fields should fail.
     try:
-        response = requests.post(
+        response = session.post(
             f"{BASE_URL}/snippets",
             json={"title": "Only a title"},
             timeout=5,
@@ -119,7 +135,7 @@ def main() -> None:
 
     # 6) POST /snippets with empty fields should fail.
     try:
-        response = requests.post(
+        response = session.post(
             f"{BASE_URL}/snippets",
             json={"title": " ", "code": "print('x')", "category": "python"},
             timeout=5,
@@ -136,7 +152,7 @@ def main() -> None:
     # 7) DELETE /snippets/<id> should delete an existing snippet.
     if isinstance(snippet_id, int):
         try:
-            response = requests.delete(f"{BASE_URL}/snippets/{snippet_id}", timeout=5)
+            response = session.delete(f"{BASE_URL}/snippets/{snippet_id}", timeout=5)
             if response.status_code == 200:
                 deleted = response.json().get("data", {}).get("deleted", {})
                 print_result("DELETE /snippets/<id> existing", deleted.get("id") == snippet_id)
@@ -150,7 +166,7 @@ def main() -> None:
 
     # 8) DELETE /snippets/<id> for a missing snippet should return 404.
     try:
-        response = requests.delete(f"{BASE_URL}/snippets/99999", timeout=5)
+        response = session.delete(f"{BASE_URL}/snippets/99999", timeout=5)
         passed = response.status_code == 404 and response.json().get("message")
         print_result("DELETE /snippets/<id> non-existing", bool(passed))
     except (requests.RequestException, ValueError) as exc:

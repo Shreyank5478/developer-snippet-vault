@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "developer-snippet-vault"
+version = "0.1.0"
+description = "A CLI and API for storing developer snippets"
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.1",
+    "flask-cors>=5.0",
+    "requests>=2.32",
+    "SQLAlchemy>=2.0,<3.0",
+    "psycopg[binary]>=3.2,<4.0",
+]
+
+[project.scripts]
+snip = "cli:cli"
+
+[tool.setuptools]
+py-modules = ["cli"]
