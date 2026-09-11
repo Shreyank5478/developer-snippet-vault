@@ -29,6 +29,7 @@ A production-style Flask backend API for managing developer snippets and command
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+alembic upgrade head
 ```
 
 2) Run the server:
@@ -170,9 +171,9 @@ Environment variables:
 - `CORS_ORIGINS` (comma-separated origins, default: `*`; restrict this in production)
 
 The app uses PostgreSQL when `DATABASE_URL` is set and SQLite locally when it is
-not. PostgreSQL is recommended for Render and concurrent users. During startup,
-snippets with no `user_id` are deleted because they predate authentication and
-cannot be assigned safely.
+not. PostgreSQL is recommended for Render and concurrent users. Migration
+`002_enforce_ownership` deletes snippets with no `user_id` because they predate
+authentication and cannot be assigned safely, then makes ownership required.
 
 For Render, create a PostgreSQL database and set the web service's
 `DATABASE_URL` environment variable to the database's internal connection URL.

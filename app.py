@@ -10,7 +10,7 @@ from typing import Any
 from flask import Flask, g, jsonify, request, send_from_directory
 from flask_cors import CORS
 from sqlalchemy import Column, ForeignKey, Integer, MetaData, String, Table, Text
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from werkzeug.exceptions import HTTPException
 
@@ -70,22 +70,6 @@ def _get_engine() -> Engine:
 
 def _get_connection():
 	return _get_engine().connect()
-
-
-def _initialize_database() -> None:
-	engine = _get_engine()
-	with engine.begin() as connection:
-		if engine.dialect.name == "sqlite":
-			connection.execute(text("PRAGMA foreign_keys = ON"))
-		metadata.create_all(connection)
-	columns = {column["name"] for column in inspect(engine).get_columns("snippets")}
-	if "user_id" not in columns:
-		with engine.begin() as connection:
-			connection.execute(text(
-				"ALTER TABLE snippets ADD COLUMN user_id INTEGER REFERENCES users(id)"
-			))
-	with engine.begin() as connection:
-		connection.execute(text("DELETE FROM snippets WHERE user_id IS NULL"))
 
 
 def api_response(data: Any, message: str, status_code: int = 200):
@@ -193,7 +177,6 @@ def _find_snippet(snippet_id: int, user_id: int) -> dict[str, Any] | None:
 
 
 def _reset_store() -> None:
-	_initialize_database()
 	with _get_engine().begin() as connection:
 		connection.execute(text("DELETE FROM snippets"))
 		connection.execute(text("DELETE FROM users"))
@@ -208,8 +191,6 @@ def create_app(testing: bool = False) -> Flask:
 	app.config["MAX_CONTENT_LENGTH"] = int(
 		os.getenv("MAX_CONTENT_LENGTH", str(DEFAULT_MAX_CONTENT_LENGTH))
 	)
-	_initialize_database()
-
 	@app.get("/")
 	def health_check():
 		data = {"service": "Developer Snippet Vault", "status": "running"}

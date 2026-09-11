@@ -1,10 +1,17 @@
 import app as app_module
 import pytest
+from alembic import command
+from alembic.config import Config
+
+
+def run_migrations():
+    command.upgrade(Config("alembic.ini"), "head")
 
 
 @pytest.fixture()
 def client(monkeypatch, tmp_path):
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "snippets.db"))
+    run_migrations()
     app_module._reset_store()
     app = app_module.create_app(testing=True)
     with app.test_client() as client:
@@ -96,15 +103,21 @@ def test_snippets_persist_when_app_is_recreated(client, monkeypatch, tmp_path):
 
 def test_app_startup_deletes_orphaned_snippets(monkeypatch, tmp_path):
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "snippets.db"))
-    app_module.create_app(testing=True)
     with app_module._get_engine().begin() as connection:
-        connection.execute(
-            app_module.snippets_table.insert().values(
-                title="Legacy", code="old", category="test", user_id=None
-            )
-        )
+        connection.execute(app_module.text(
+            "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL, "
+            "api_key_hash TEXT NOT NULL UNIQUE)"
+        ))
+        connection.execute(app_module.text(
+            "CREATE TABLE snippets (id INTEGER PRIMARY KEY, title TEXT NOT NULL, "
+            "code TEXT NOT NULL, category TEXT NOT NULL, user_id INTEGER)"
+        ))
+        connection.execute(app_module.text(
+            "INSERT INTO snippets (title, code, category, user_id) "
+            "VALUES ('Legacy', 'old', 'test', NULL)"
+        ))
 
-    app_module.create_app(testing=True)
+    run_migrations()
     with app_module._get_engine().connect() as connection:
         count = connection.execute(
             app_module.text("SELECT COUNT(*) FROM snippets")
