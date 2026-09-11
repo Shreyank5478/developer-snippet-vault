@@ -1,68 +1,89 @@
 # Developer Snippet Vault
 
-A production-style Flask backend API for managing developer snippets and commands.
+Developer Snippet Vault is a small Flask service for saving code snippets and
+commands. It exposes a REST API, a browser UI, and a command-line client. Each
+user gets an API key and can only access their own snippets.
 
-## Features
+## What It Includes
 
-* Create snippets
-* View snippets
-* Delete snippets
-* API-key authentication and per-user ownership
-* Input validation
-* REST API structure
-* Dockerized deployment
+- REST API for creating, listing, and deleting snippets
+- API-key authentication with per-user ownership
+- PostgreSQL support for deployed environments
+- SQLite fallback for local development
+- Alembic migrations for controlled schema changes
+- Plain HTML, CSS, and JavaScript web UI
+- `snip` CLI for terminal use
+- Docker and Gunicorn deployment
 
-## Tech Stack
+## Why It Changed
 
-* Python
-* Flask
-* Docker
-* AWS EC2
-* Linux
-* Git & GitHub
+The first version kept snippets in memory, which meant a restart erased
+everything. That was replaced with SQLite, then moved to PostgreSQL for the
+deployed application. PostgreSQL is a better fit for multiple users and
+concurrent requests, and Neon keeps the database independent from Render's
+temporary service filesystem.
 
-## Quick Start (Local)
+Authentication was added because an open snippet API would let any user read
+or delete anyone else's data. API keys are stored as hashes, and the raw key is
+shown only when the account is created or the key is rotated.
 
-1) Create a virtual environment and install dependencies:
+The web UI and CLI were added so the service can be used without writing curl
+commands for every operation.
+
+## Running Locally
+
+Create an environment and install the dependencies:
 
 ```bash
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate
 pip install -r requirements.txt
-alembic upgrade head
 ```
 
-2) Run the server:
+The default local database is `data/snippets.db`. Apply the schema before
+starting the server:
 
 ```bash
+alembic upgrade head
 python app.py
 ```
 
-The API will be available at `http://127.0.0.1:5000`.
-
-## Web UI
-
-The plain HTML/CSS/JavaScript web UI is served by the same Flask app at:
+The API is available at `http://127.0.0.1:5000` and the web UI is at:
 
 ```text
 http://127.0.0.1:5000/app
 ```
 
-After deployment, replace the host with your deployed service URL. Paste an
-existing API key to sign in, or create a user from the UI. A newly created API
-key is displayed once, so copy and save it securely.
+## Web UI
+
+Open `/app` in a browser. You can either paste an existing API key or create a
+new account. A new key is displayed once, so save it before leaving the page.
+
+The UI supports:
+
+- Creating an account
+- Signing in and signing out
+- Adding snippets
+- Viewing your snippets
+- Copying code
+- Deleting snippets
 
 ## CLI
 
-Install the project in editable mode to create the `snip` command:
+Install the project in editable mode:
 
 ```bash
 pip install -e .
+```
+
+Configure the server and API key:
+
+```bash
 snip config set-url http://127.0.0.1:5000
 snip config set-key <your-api-key>
 ```
 
-Create a user with `POST /users` first to obtain an API key. Then use the CLI:
+Use the commands:
 
 ```bash
 snip add "Hello World" -c python
@@ -72,130 +93,128 @@ snip list -c python
 snip rm 1
 ```
 
-The CLI stores its connection settings in `~/.snippet-vault/config.json`.
+The CLI stores its settings in `~/.snippet-vault/config.json`.
 
-## API Endpoints
+## API
 
-### Health Check
+### Health check
 
-```
+```http
 GET /
 ```
 
-### Create Snippet
-
-```
-POST /snippets
-Authorization: Bearer <api-key>
-Content-Type: application/json
-
-{
-	"title": "Hello World",
-	"code": "print('hello')",
-	"category": "python"
-}
-```
-
-### List Snippets
-
-```
-GET /snippets
-Authorization: Bearer <api-key>
-```
-
-### Delete Snippet
-
-```
-DELETE /snippets/<id>
-Authorization: Bearer <api-key>
-```
-
-### Create User
+### Create a user
 
 ```bash
 curl -X POST http://127.0.0.1:5000/users \
-	-H "Content-Type: application/json" \
-	-d '{"name":"Your Name"}'
+  -H "Content-Type: application/json" \
+  -d '{"name":"Your Name"}'
 ```
 
-The response contains the user's API key. Store it securely because it is only
-shown when the user is created. Each user can only view and delete their own
-snippets.
+The response contains the API key. The server does not provide it again later.
 
-Rotate a compromised key with the current key:
+### Create a snippet
 
 ```bash
-curl -X POST https://your-service.onrender.com/users/me/rotate-key \
-	-H "Authorization: Bearer <current-api-key>"
+curl -X POST http://127.0.0.1:5000/snippets \
+  -H "Authorization: Bearer <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Hello World","code":"print(1)","category":"python"}'
 ```
 
-The old key stops working immediately, and the new key is returned only once.
-
-For production, configure `CORS_ORIGINS` with the exact browser origins you
-trust, and use Render rate limiting or an upstream proxy to protect the public
-`POST /users` endpoint from automated account creation.
-
-## Testing
-
-Install dev dependencies and run tests:
+### List snippets
 
 ```bash
-pip install -r requirements-dev.txt
-pytest
+curl http://127.0.0.1:5000/snippets \
+  -H "Authorization: Bearer <api-key>"
 ```
 
-Optional smoke test (requires the server running):
+### Delete a snippet
 
 ```bash
-python test_api.py
+curl -X DELETE http://127.0.0.1:5000/snippets/<id> \
+  -H "Authorization: Bearer <api-key>"
 ```
 
-## Docker
+### Rotate an API key
 
-Build and run the container:
+```bash
+curl -X POST http://127.0.0.1:5000/users/me/rotate-key \
+  -H "Authorization: Bearer <current-api-key>"
+```
+
+Rotating a key invalidates the old one immediately. Save the new key from the
+response.
+
+## Database Configuration
+
+The application uses PostgreSQL when `DATABASE_URL` is set. This is the
+recommended configuration for Render and Neon:
+
+```text
+DATABASE_URL=<Neon PostgreSQL connection string>
+```
+
+Do not commit the connection string or put it in chat. Add it as a secret in
+Render's environment settings.
+
+When `DATABASE_URL` is not set, the app uses local SQLite:
+
+```text
+DATABASE_PATH=data/snippets.db
+```
+
+Run migrations with:
+
+```bash
+alembic upgrade head
+```
+
+The migrations create the schema, remove pre-authentication snippets that have
+no owner, and require every new snippet to belong to a user. The orphan cleanup
+is a migration step, not something that runs on every application request.
+
+## Environment Variables
+
+- `DATABASE_URL`: PostgreSQL connection string; preferred for deployment
+- `DATABASE_PATH`: SQLite file path used when `DATABASE_URL` is absent
+- `PORT`: server port, default `5000`
+- `MAX_CONTENT_LENGTH`: maximum request size in bytes, default `1048576`
+- `CORS_ORIGINS`: comma-separated allowed origins; defaults to `*` for now
+
+For production, set `CORS_ORIGINS` to the exact origins that should call the
+API and use rate limiting for the public `POST /users` endpoint.
+
+## Docker and Render
+
+Build and run locally:
 
 ```bash
 docker build -t developer-snippet-vault .
 docker run -p 5000:5000 developer-snippet-vault
 ```
 
-## Configuration
+The container runs `alembic upgrade head` before starting Gunicorn. On Render,
+set `DATABASE_URL` to the Neon connection string and deploy the branch that
+contains the migrations. Do not rely on a local SQLite file for deployed data.
 
-Environment variables:
+The deployed UI is available at:
 
-- `PORT` (default: 5000)
-- `FLASK_DEBUG` (set to `1` for debug mode)
-- `DATABASE_URL` (PostgreSQL URL; preferred for deployment)
-- `MAX_CONTENT_LENGTH` (bytes, default: 1048576)
-- `DATABASE_PATH` (SQLite database path, default: `data/snippets.db`)
-- `CORS_ORIGINS` (comma-separated origins, default: `*`; restrict this in production)
-
-The app uses PostgreSQL when `DATABASE_URL` is set and SQLite locally when it is
-not. PostgreSQL is recommended for Render and concurrent users. Migration
-`002_enforce_ownership` deletes snippets with no `user_id` because they predate
-authentication and cannot be assigned safely, then makes ownership required.
-
-For Render, create a PostgreSQL database and set the web service's
-`DATABASE_URL` environment variable to the database's internal connection URL.
-Do not set `DATABASE_PATH` in that deployment; it is only the local SQLite
-fallback.
-
-For local SQLite-only Docker usage, mount the database directory:
-
-```bash
-docker run -p 5000:5000 -v snippet-data:/app/data developer-snippet-vault
+```text
+https://developer-snippet-vault.onrender.com/app
 ```
 
-## Deployment
+## Testing
 
-This application is deployed on an AWS EC2 Ubuntu server using Docker containers.
+Install development dependencies and run the full suite:
 
-## Learning Goals
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
 
-This project was built to learn:
+The smoke test expects a running server:
 
-* Backend API development
-* Docker containerization
-* Linux server management
-* Cloud deployment on AWS
-* DevOps workflow fundamentals
+```bash
+python test_api.py https://developer-snippet-vault.onrender.com
+```
