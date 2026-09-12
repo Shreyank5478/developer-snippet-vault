@@ -198,11 +198,20 @@ The container runs `alembic upgrade head` before starting Gunicorn. On Render,
 set `DATABASE_URL` to the Neon connection string and deploy the branch that
 contains the migrations. Do not rely on a local SQLite file for deployed data.
 
-The deployed UI is available at:
+Note: on free-tier hosting, both the web service and database may take up to a
+minute to respond after a period of inactivity.
+
+Once `DATABASE_URL` is configured and the service is deployed, the UI is
+available at:
 
 ```text
 https://developer-snippet-vault.onrender.com/app
 ```
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for
+more details.
 
 ## Testing
 
