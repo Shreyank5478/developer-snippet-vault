@@ -209,6 +209,24 @@ def test_empty_field_returns_error(client):
     assert "title" in data.get("errors", {})
 
 
+def test_snippet_code_preserves_whitespace(client):
+    payload = {"title": "Whitespace", "code": "  print('  hi  ')\n", "category": "python"}
+    response = client.post("/snippets", json=payload)
+    data = response.get_json()
+
+    assert response.status_code == 201
+    assert data["data"]["code"] == payload["code"]
+
+
+def test_lowercase_bearer_header_is_accepted(client):
+    old_key = client.environ_base["HTTP_AUTHORIZATION"].removeprefix("Bearer ")
+    client.environ_base["HTTP_AUTHORIZATION"] = f"bearer {old_key}"
+
+    response = client.get("/snippets")
+
+    assert response.status_code == 200
+
+
 def test_delete_missing_snippet_returns_404(client):
     response = client.delete("/snippets/9999")
     data = response.get_json()

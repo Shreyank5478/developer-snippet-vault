@@ -137,7 +137,7 @@ def _hash_api_key(api_key: str) -> str:
 
 def _authenticated_user_id() -> int | None:
 	header = request.headers.get("Authorization", "")
-	if header.startswith("Bearer "):
+	if header.lower().startswith("bearer "):
 		api_key = header[7:].strip()
 	else:
 		api_key = request.headers.get("X-API-Key", "").strip()
@@ -251,7 +251,7 @@ def create_app(testing: bool = False) -> Flask:
 			return api_error("Validation failed.", 400, errors)
 
 		title = _clean_text(payload["title"])
-		code = _clean_text(payload["code"])
+		code = payload["code"]
 		category = _clean_text(payload["category"])
 		with _get_engine().begin() as connection:
 			result = connection.execute(
