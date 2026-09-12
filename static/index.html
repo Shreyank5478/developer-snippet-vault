@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Developer Snippet Vault</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="container">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Developer tool</p>
+        <h1>Snippet Vault</h1>
+        <p class="muted">Keep your useful commands and code close at hand.</p>
+      </div>
+      <button id="sign-out" class="button secondary hidden" type="button">Sign out</button>
+    </header>
+
+    <p id="error" class="message error hidden" role="alert"></p>
+    <p id="notice" class="message success hidden" role="status"></p>
+
+    <section id="auth-panel" class="auth-grid">
+      <form id="login-form" class="panel">
+        <h2>Sign in</h2>
+        <label for="api-key">API key</label>
+        <input id="api-key" name="api-key" type="password" autocomplete="off" required>
+        <button class="button" type="submit">Sign in</button>
+      </form>
+
+      <form id="register-form" class="panel">
+        <h2>No account yet?</h2>
+        <p class="muted">Create an account and receive an API key.</p>
+        <label for="name">Name</label>
+        <input id="name" name="name" type="text" required>
+        <button class="button" type="submit">Create account</button>
+        <div id="new-key" class="key-box hidden">
+          <strong>Your API key</strong>
+          <code id="new-key-value"></code>
+          <p>Save this key now. It will not be shown again.</p>
+          <button id="copy-key" class="button secondary" type="button">Copy key</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="vault-panel" class="hidden">
+      <form id="snippet-form" class="panel">
+        <h2>Add a snippet</h2>
+        <div class="form-row">
+          <div>
+            <label for="title">Title</label>
+            <input id="title" name="title" type="text" required>
+          </div>
+          <div>
+            <label for="category">Category</label>
+            <input id="category" name="category" type="text" placeholder="python" required>
+          </div>
+        </div>
+        <label for="code">Code</label>
+        <textarea id="code" name="code" rows="8" required></textarea>
+        <button class="button" type="submit">Save snippet</button>
+      </form>
+
+      <div class="section-heading">
+        <h2>Your snippets</h2>
+        <button id="refresh" class="button secondary" type="button">Refresh</button>
+      </div>
+      <div id="snippet-list" class="snippet-list"></div>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
